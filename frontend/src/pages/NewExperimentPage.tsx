@@ -4,7 +4,7 @@ import {
   ArrowRight, AlertCircle, Layers, Tag, Volume2, FolderPlus, FileText, Sparkles
 } from 'lucide-react';
 import { Experiment, Sample } from '../types';
-import { fetchExperiments, createExperiment, uploadSample, getExperiment } from '../services/api';
+import { fetchExperiments, createExperiment, uploadSample, getExperiment, deleteSample } from '../services/api';
 import { AudioRecorder } from '../components/AudioRecorder';
 
 interface NewExperimentPageProps {
@@ -133,6 +133,22 @@ export const NewExperimentPage: React.FC<NewExperimentPageProps> = ({
   useEffect(() => {
     loadData();
   }, [selectedExpId]);
+
+  const handleDeleteUploadedSample = async (sampleId: number, sampleName: string) => {
+    if (!window.confirm(`Are you sure you want to delete sample "${sampleName}"? This will also remove any transcripts and audio files.`)) {
+      return;
+    }
+    try {
+      await deleteSample(sampleId);
+      if (selectedExpId) {
+        const exp = await getExperiment(selectedExpId);
+        setCurrentExp(exp);
+      }
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete sample');
+    }
+  };
 
   // Helper to resolve effective class name
   const getEffectiveClassName = (selection: string, slotIndex: number): string => {
@@ -974,6 +990,14 @@ export const NewExperimentPage: React.FC<NewExperimentPageProps> = ({
                                 Pending STT
                               </span>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUploadedSample(s.id, s.sample_name)}
+                              title="Delete sample"
+                              className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/50 rounded border border-transparent hover:border-rose-500/30 transition-colors ml-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
                       ))

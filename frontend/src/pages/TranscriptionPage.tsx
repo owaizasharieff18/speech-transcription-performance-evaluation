@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Play, Cpu, CheckCircle2, Clock, AlertTriangle, 
-  ArrowRight, Layers, FileText, BarChart3, RefreshCw, Sparkles
+  ArrowRight, Layers, FileText, BarChart3, RefreshCw, Sparkles, Trash2
 } from 'lucide-react';
 import { Experiment, Sample, ModelInfo } from '../types';
 import { 
   fetchExperiments, getExperiment, runTranscription, fetchModels,
-  transcribeClassSamples, transcribeAllExperimentSamples 
+  transcribeClassSamples, transcribeAllExperimentSamples, deleteSample
 } from '../services/api';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { MetricBadge } from '../components/MetricBadge';
@@ -107,6 +107,23 @@ export const TranscriptionPage: React.FC<TranscriptionPageProps> = ({
       setTranscribeError(err.message || 'Failed to transcribe all samples');
     } finally {
       setIsTranscribing(false);
+    }
+  };
+
+  const handleDeleteSample = async (sampleId: number, sampleName: string) => {
+    if (!window.confirm(`Are you sure you want to delete sample "${sampleName}"? This will also remove any transcriptions, evaluations, and audio files.`)) {
+      return;
+    }
+    try {
+      await deleteSample(sampleId);
+      if (selectedExpId) {
+        const exp = await getExperiment(selectedExpId);
+        setCurrentExp(exp);
+      }
+      setSelectedSampleIndex(prev => Math.max(0, prev - 1));
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete sample');
     }
   };
 
@@ -323,8 +340,8 @@ export const TranscriptionPage: React.FC<TranscriptionPageProps> = ({
                         </div>
                       </div>
 
-                      {/* Status indicator */}
-                      <div>
+                      {/* Status indicator and actions */}
+                      <div className="flex items-center space-x-1.5 flex-shrink-0">
                         {isProcessingThis ? (
                           <div className="w-5 h-5 border-2 border-brand-400 border-t-transparent rounded-full animate-spin"></div>
                         ) : isTranscribed ? (
@@ -332,6 +349,17 @@ export const TranscriptionPage: React.FC<TranscriptionPageProps> = ({
                         ) : (
                           <Clock className="w-4 h-4 text-amber-500" />
                         )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSample(sample.id, sample.sample_name);
+                          }}
+                          title="Delete sample"
+                          className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/50 rounded border border-transparent hover:border-rose-500/30 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -357,14 +385,25 @@ export const TranscriptionPage: React.FC<TranscriptionPageProps> = ({
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleTranscribeSingle(currentSample.id)}
-                    disabled={isTranscribing}
-                    className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-lg shadow-md disabled:opacity-50 transition-all self-start sm:self-auto"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${transcribingSampleId === currentSample.id ? 'animate-spin' : ''}`} />
-                    <span>{transcribingSampleId === currentSample.id ? 'Transcribing (TS1-TS6)...' : 'Run 6 STT Models'}</span>
-                  </button>
+                  <div className="flex items-center space-x-2 self-start sm:self-auto">
+                    <button
+                      onClick={() => handleDeleteSample(currentSample.id, currentSample.sample_name)}
+                      disabled={isTranscribing}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-rose-200 text-xs font-semibold rounded-lg border border-rose-500/30 transition-all"
+                      title="Delete this sample"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Sample</span>
+                    </button>
+                    <button
+                      onClick={() => handleTranscribeSingle(currentSample.id)}
+                      disabled={isTranscribing}
+                      className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-lg shadow-md disabled:opacity-50 transition-all"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${transcribingSampleId === currentSample.id ? 'animate-spin' : ''}`} />
+                      <span>{transcribingSampleId === currentSample.id ? 'Transcribing (TS1-TS6)...' : 'Run 6 STT Models'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* AUTOMATIC SPEECH & ACOUSTIC ANALYSIS CARD */}

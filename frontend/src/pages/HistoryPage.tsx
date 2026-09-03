@@ -4,7 +4,7 @@ import {
   Layers, Search, FileSpreadsheet, Eye, Play 
 } from 'lucide-react';
 import { Experiment, Sample } from '../types';
-import { fetchExperiments, getExperiment, deleteExperiment, getExportCsvUrl } from '../services/api';
+import { fetchExperiments, getExperiment, deleteExperiment, deleteSample, getExportCsvUrl } from '../services/api';
 
 interface HistoryPageProps {
   setSelectedExpId: (id: number) => void;
@@ -56,6 +56,22 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
       setPreviewExp(exp);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeleteSample = async (sampleId: number, sampleName: string) => {
+    if (!window.confirm(`Are you sure you want to delete sample "${sampleName}"? This will also remove any transcriptions and its audio file.`)) {
+      return;
+    }
+    try {
+      await deleteSample(sampleId);
+      if (previewExp) {
+        const updated = await getExperiment(previewExp.id);
+        setPreviewExp(updated);
+      }
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete sample');
     }
   };
 
@@ -237,6 +253,14 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
                         <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                           {s.speaker_category}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSample(s.id, s.sample_name)}
+                          title="Delete sample"
+                          className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/60 rounded border border-transparent hover:border-rose-500/30 transition-colors ml-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                     <p className="text-xs font-mono text-slate-400 bg-slate-900 p-2.5 rounded border border-slate-850">
